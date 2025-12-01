@@ -1,0 +1,99 @@
+
+<!DOCTYPE html>
+<html lang="ar">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Manhaji | منهجي</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Tajawal', 'Cairo', 'sans-serif'],
+              display: ['Cairo', 'sans-serif'],
+            },
+            colors: {
+              brand: {
+                50: '#eefcf8',
+                100: '#d6f6ed',
+                200: '#b0ebd9',
+                300: '#7edadd',
+                400: '#4bd3be',
+                500: '#20c997', // Exact match for --primary-color
+                600: '#1baa80', // Exact match for --primary-dark
+                700: '#148666',
+                800: '#136a53',
+                900: '#135746',
+              },
+              gray: {
+                50: '#f4f7f6', // Exact match for --secondary-color
+                100: '#e9ecef',
+                200: '#e0e0e0', // Exact match for --border-color
+                300: '#ced4da',
+                400: '#adb5bd',
+                500: '#6c757d', // Exact match for --text-light
+                600: '#495057',
+                700: '#343a40',
+                800: '#2b3035',
+                900: '#212529', // Exact match for --text-dark
+              },
+              accent: {
+                purple: '#8b5cf6',
+                blue: '#3b82f6',
+                orange: '#f97316'
+              }
+            },
+            animation: {
+              'bounce-slow': 'bounce 3s infinite',
+            },
+            container: {
+              center: true,
+              padding: '1rem',
+              screens: {
+                sm: '640px',
+                md: '768px',
+                lg: '1024px',
+                xl: '1200px', // Matches legacy max-width
+              },
+            },
+          },
+        },
+      }
+    </script>
+    <style>
+      body {
+        font-family: 'Tajawal', sans-serif;
+        background-color: #f4f7f6; /* Fallback */
+        color: #212529; /* Fallback */
+      }
+      /* Custom scrollbar for chat */
+      .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+      }
+      .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
