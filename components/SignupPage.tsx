@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
-import { Mail, Lock, ArrowRight, Loader2, BookOpen, GraduationCap, Users, Check, ChevronLeft } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Loader2, BookOpen, GraduationCap, Users, Check, ChevronLeft, AlertCircle } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { Role } from '../types';
+import { signInWithGoogle, signUpWithEmail, getAuthErrorMessage } from '../services/authService';
 
 interface SignupPageProps {
   onSignupSuccess: () => void;
@@ -13,6 +14,10 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onGoToLogin })
   const [step, setStep] = useState<'role' | 'form'>('role');
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string>('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const { t } = useLanguage();
 
   const handleRoleSelect = (role: Role) => {
@@ -23,14 +28,50 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onGoToLogin })
     if (selectedRole) setStep('form');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    
+    if (password !== confirmPassword) {
+      setError('كلمتا المرور غير متطابقتين');
+      return;
+    }
+    
+    if (password.length < 6) {
+      setError('كلمة المرور يجب أن تكون 6 أحرف على الأقل');
+      return;
+    }
+
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
+    
+    try {
+      await signUpWithEmail(email, password);
+      // Store the selected role in localStorage or database
+      localStorage.setItem('userRole', selectedRole || 'student');
       onSignupSuccess();
-    }, 1500);
+    } catch (err: any) {
+      setError(getAuthErrorMessage(err.code));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleSignUp = async () => {
+    setIsLoading(true);
+    setError('');
+    
+    try {
+      await signInWithGoogle();
+      // Store the selected role
+      localStorage.setItem('userRole', selectedRole || 'student');
+      onSignupSuccess();
+    } catch (err: any) {
+      if (err.code !== 'auth/popup-closed-by-user') {
+        setError(getAuthErrorMessage(err.code));
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const RoleCard = ({ role, icon: Icon, title, desc }: { role: Role, icon: any, title: string, desc: string }) => (
@@ -120,6 +161,13 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onGoToLogin })
                     )}
                 </div>
 
+                {error && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl flex items-start gap-2 text-red-700 text-sm">
+                        <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                        <span>{error}</span>
+                    </div>
+                )}
+
                 {step === 'role' && (
                     <div className="space-y-8 animate-fade-in">
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -160,6 +208,8 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onGoToLogin })
                                 <input 
                                     type="email" 
                                     required
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
                                     className="w-full px-4 py-3.5 ps-11 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 transition-all text-gray-800 placeholder:text-gray-400 shadow-sm"
                                     placeholder="name@example.com"
                                 />
@@ -174,6 +224,8 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onGoToLogin })
                                     <input 
                                         type="password" 
                                         required
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
                                         className="w-full px-4 py-3.5 ps-11 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 transition-all text-gray-800 placeholder:text-gray-400 shadow-sm"
                                         placeholder="••••••••"
                                     />
@@ -186,6 +238,8 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onGoToLogin })
                                     <input 
                                         type="password" 
                                         required
+                                        value={confirmPassword}
+                                        onChange={(e) => setConfirmPassword(e.target.value)}
                                         className="w-full px-4 py-3.5 ps-11 bg-white border border-gray-200 rounded-xl focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 transition-all text-gray-800 placeholder:text-gray-400 shadow-sm"
                                         placeholder="••••••••"
                                     />
@@ -212,8 +266,18 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSignupSuccess, onGoToLogin })
                         </div>
 
                         <div className="flex gap-3 justify-center">
-                             <button type="button" className="p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors border border-gray-200 text-gray-600">
-                                <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M21.35 11.1h-9.17v2.73h6.51c-.33 3.81-3.5 5.44-6.5 5.44C8.36 19.27 5 16.25 5 12c0-4.1 3.2-7.27 7.2-7.27 3.09 0 4.9 1.97 4.9 1.97L19 4.72S16.56 2 12.1 2C6.42 2 2.03 6.8 2.03 12c0 5.05 4.13 10 10.22 10 5.35 0 9.25-3.67 9.25-9.09 0-1.15-.15-1.81-.15-1.81z" /></svg>
+                             <button 
+                                type="button"
+                                onClick={handleGoogleSignUp}
+                                disabled={isLoading}
+                                className="p-3 bg-white rounded-xl hover:bg-gray-50 transition-all border border-gray-300 hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                             >
+                                <svg className="w-6 h-6" viewBox="0 0 48 48">
+                                    <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+                                    <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+                                    <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+                                    <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+                                </svg>
                              </button>
                              <button type="button" className="p-3 bg-red-50 rounded-xl hover:bg-red-100 transition-colors border border-red-100 text-[#C7000B]">
                                 <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
