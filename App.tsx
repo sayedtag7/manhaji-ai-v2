@@ -19,15 +19,26 @@ import { LanguageProvider } from './contexts/LanguageContext';
 
 type AuthView = 'landing' | 'login' | 'signup' | 'profile-setup' | 'app';
 
+const DEV_PROFILE = {
+  uid: 'dev-user-001',
+  name: 'Developer مطور',
+  email: 'dev@manhaji.ai',
+  role: 'student' as const,
+  grade: 'الصف الأول الإعدادي',
+  stage: 'Grade 7',
+};
+
 const AppContent: React.FC = () => {
   const [authView, setAuthView] = useState<AuthView>('landing');
   const [activeNav, setActiveNav] = useState<NavItem>(NavItem.Dashboard);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
 
   useEffect(() => {
-    const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+    const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
     if (apiKey) {
       initializeGemini(apiKey);
+    } else {
+      console.warn('No Gemini API key found in env');
     }
   }, []);
 
@@ -50,6 +61,7 @@ const AppContent: React.FC = () => {
   };
 
   // Auth Flow Handlers
+  const handleDevAccess = () => setAuthView('app');
   const handleStart = () => setAuthView('login');
   const handleLogin = () => setAuthView('app');
   const handleGoToSignup = () => setAuthView('signup');
@@ -58,7 +70,7 @@ const AppContent: React.FC = () => {
   const handleProfileComplete = () => setAuthView('app');
 
   if (authView === 'landing') {
-    return <LandingPage onStart={handleStart} />;
+    return <LandingPage onStart={handleStart} onDevAccess={handleDevAccess} />;
   }
 
   if (authView === 'login') {
@@ -82,7 +94,7 @@ const AppContent: React.FC = () => {
           </div>
         );
       case NavItem.Parents:
-        return <ParentDashboard />;
+        return <ParentDashboard currentUserProfile={DEV_PROFILE} />;
       case NavItem.Courses:
         if (selectedCourse) {
           return <CourseView course={selectedCourse} onBack={() => setSelectedCourse(null)} />;
@@ -96,7 +108,7 @@ const AppContent: React.FC = () => {
         return <SettingsPage />;
       case NavItem.Dashboard:
       default:
-        return <Dashboard onSelectCourse={handleCourseSelect} />;
+        return <Dashboard onSelectCourse={handleCourseSelect} currentUserProfile={DEV_PROFILE} />;
     }
   };
 

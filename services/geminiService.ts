@@ -1,105 +1,134 @@
-
-import { GoogleGenAI, Chat, GenerateContentResponse } from "@google/genai";
-import { SYSTEM_PROMPT_AR } from '../constants';
+import { GoogleGenAI } from "@google/genai";
+import { SYSTEM_PROMPT_AR, SYSTEM_PROMPT_EN } from '../constants';
 import { Language } from '../types';
 
 let client: GoogleGenAI | null = null;
-let chatSession: Chat | null = null;
 
 export const initializeGemini = (apiKey: string) => {
-  client = new GoogleGenAI({ apiKey });
+  console.log("initializeGemini called with key:", apiKey ? "✓ Present" : "✗ Missing");
+  if (!apiKey) {
+    console.warn("Gemini API key is empty");
+    return;
+  }
+  try {
+    client = new GoogleGenAI({ apiKey });
+    console.log("✓ Gemini initialized successfully");
+  } catch (error) {
+    console.error("✗ Failed to initialize Gemini:", error);
+    throw error;
+  }
 };
 
 export const getGeminiClient = () => client;
 
 /**
- * Starts a new chat session or returns the existing one.
+ * Send message to Gemini with optional system prompt and context
  */
-export const startChatSession = async (lessonContext?: string, systemPromptOverride?: string) => {
-  if (!client) throw new Error("API Key not initialized");
-
-  let fullSystemInstruction = systemPromptOverride || SYSTEM_PROMPT_AR;
-
-  if (lessonContext) {
-    fullSystemInstruction += `
-    
-    ---
-    Context (Lesson Information):
-    ${lessonContext}
-    ---
-    `;
-  }
-
-  chatSession = client.chats.create({
-    model: 'gemini-2.5-flash',
-    config: {
-      systemInstruction: fullSystemInstruction,
-      temperature: 0.7,
-    },
-  });
-  
-  return chatSession;
-};
-
 export const sendMessageToGemini = async (
   message: string,
   imageBase64?: string,
-  language: Language = 'ar'
+  language: Language = 'ar',
+  lessonContext?: string
 ): Promise<string> => {
-  if (!client) throw new Error("API Key not initialized");
+  console.log("sendMessageToGemini called:", { message: message.substring(0, 50), hasImage: !!imageBase64, language });
+  
+  if (!client) {
+    const localized = (ar: string, en: string) => (language === 'ar' ? ar : en);
+    const errorMsg = localized(
+      "لم يتم تهيئة مفتاح API. يرجى إعادة تحميل الصفحة.",
+      "API key not initialized. Please reload the page."
+    );
+    console.error("✗ Client not initialized. Error:", errorMsg);
+    return errorMsg;
+  }
 
   try {
     const localized = (ar: string, en: string) => (language === 'ar' ? ar : en);
-    // If there is an image, we perform a single generation request (multimodal)
-    // instead of the persistent chat session for simplicity in this "Homework Helper" scenario,
-    // OR we can add the image to the chat history if we want continuity.
-    // For this implementation, let's try to add it to the chat if possible, or fall back to generateContent.
+    const systemPrompt = language === 'ar' ? SYSTEM_PROMPT_AR : SYSTEM_PROMPT_EN;
+    
+    // Build system instruction with optional context
+    const fullSystemPrompt = lessonContext
+      ? `${systemPrompt}\n\n---\nContext:\n${lessonContext}\n---`
+      : systemPrompt;
+
+    // Prepare the request content parts
+    let parts: any[] = [{ text: message }];
     
     if (imageBase64) {
-       // Gemini 2.5 Flash supports images in chat.
-       if (!chatSession) await startChatSession();
-       
-       const response = await chatSession?.sendMessage({
-         content: {
-            role: 'user',
-            parts: [
-                { text: message },
-                { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } }
-            ]
-         }
-       });
-       return response?.text || localized("لم أتمكن من قراءة الصورة.", "I could not read the image.");
+      parts.push({
+        inlineData: {
+          mimeType: 'image/jpeg',
+          data: imageBase64
+        }
+      });
     }
 
-    if (!chatSession) {
-      await startChatSession();
-    }
-
-    const response: GenerateContentResponse = await chatSession!.sendMessage({
-      message,
-    });
+    console.log("Calling Gemini API...");
     
-    return response.text || localized("عذراً، لم أستطع فهم ذلك.", "I could not understand that.");
-  } catch (error) {
-    console.error("Gemini Error:", error);
-    return localized(
-      "واجهت مشكلة في الاتصال. يرجى التحقق من الإنترنت أو مفتاح API.",
-      "I encountered a connection issue. Please verify your internet or API key."
+    // Call Gemini API using client.models.generateContent()
+    const response = await client.models.generateContent({
+      model: 'gemini-2.5-flash',
+      config: {
+        systemInstruction: fullSystemPrompt
+      },
+      contents: [
+        {
+          role: 'user',
+          parts: parts
+        }
+      ]
+    });
+
+    console.log("✓ Gemini response received");
+
+    // Extract text from response - @google/genai uses response.text property
+    const text = response.text ||
+                 response.candidates?.[0]?.content?.parts?.[0]?.text ||
+                 localized("لم أتمكن من إنشاء رد.", "I could not generate a response.");
+    
+    console.log("✓ Extracted response text:", text.substring(0, 100));
+    return text;
+  } catch (error: any) {
+    console.error("✗ Gemini Error:", error);
+    const localized = (ar: string, en: string) => (language === 'ar' ? ar : en);
+    const errorMsg = localized(
+      `حدث خطأ: ${error?.message || 'خطأ غير معروف'}`,
+      `Error: ${error?.message || 'Unknown error'}`
     );
+    console.error("Error details:", error);
+    return errorMsg;
   }
 };
 
 export const summarizeLesson = async (content: string, language: Language): Promise<string> => {
-    if (!client) throw new Error("API Key not initialized");
-    
+  if (!client) {
+    return language === 'ar' ? "لم يتم تهيئة API" : "API not initialized";
+  }
+  
+  try {
     const prompt = language === 'ar'
-        ? `قم بتلخيص المحتوى التعليمي التالي بشكل نقاط مختصرة وسهلة الفهم للطالب:\n\n${content}`
-        : `Summarize the following educational content into clear, easy-to-follow bullet points for the student:\n\n${content}`;
+      ? `قم بتلخيص المحتوى التعليمي التالي بشكل نقاط مختصرة وسهلة الفهم:\n\n${content}`
+      : `Summarize this educational content into clear bullet points:\n\n${content}`;
 
+    // Use client.models.generateContent() for summarization
     const response = await client.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt
+      model: 'gemini-2.5-flash',
+      contents: [{ role: 'user', parts: [{ text: prompt }] }]
     });
 
-    return response.text || (language === 'ar' ? "فشل التلخيص" : "Summary failed.");
+    const text = response.text || 
+                 response.candidates?.[0]?.content?.parts?.[0]?.text ||
+                 (language === 'ar' ? "فشل التلخيص" : "Summary failed");
+    
+    return text;
+  } catch (error) {
+    console.error("Summarize error:", error);
+    return language === 'ar' ? "حدث خطأ في التلخيص" : "Summarization error";
+  }
+};
+
+// Keep startChatSession for backward compatibility
+export const startChatSession = async (lessonContext?: string, systemPromptOverride?: string) => {
+  if (!client) throw new Error("API Key not initialized");
+  return null;
 };

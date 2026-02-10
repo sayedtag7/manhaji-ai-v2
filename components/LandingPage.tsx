@@ -19,9 +19,10 @@ import { useLanguage } from '../contexts/LanguageContext';
 
 interface LandingPageProps {
   onStart: () => void;
+  onDevAccess?: () => void;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ onStart, onDevAccess }) => {
   const { language, direction, setLanguage, t } = useLanguage();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   const scrollToSection = (id: string) => {
@@ -168,6 +169,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
                 </span>
               </button>
               <div className="hidden md:flex items-center gap-4">
+                {onDevAccess && (
+                  <button onClick={onDevAccess} className="text-xs text-gray-400 hover:text-brand-500 border border-dashed border-gray-300 px-3 py-1.5 rounded-lg font-mono hover:border-brand-400 transition-colors">
+                    🛠 Dev Access
+                  </button>
+                )}
                 <button onClick={onStart} className="text-gray-600 hover:text-brand-600 font-bold px-4 py-2">
                   {language === 'ar' ? 'تسجيل الدخول' : 'Sign in'}
                 </button>

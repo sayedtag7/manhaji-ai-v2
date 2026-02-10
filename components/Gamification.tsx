@@ -5,7 +5,11 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { getBadgeDescription, getBadgeName } from '../utils/localization';
 import { Trophy, Star, TrendingUp } from 'lucide-react';
 
-const Gamification: React.FC = () => {
+interface GamificationProps {
+    studentId?: string;
+}
+
+const Gamification: React.FC<GamificationProps> = ({ studentId }) => {
     const { t, language } = useLanguage();
 
     // Generate heatmap grid (mock)
