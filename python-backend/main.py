@@ -68,12 +68,12 @@ try:
 except Exception as e:
     logger.warning(f"⚠ Misconception Detector init failed: {e}")
 
-# 4. Visual Spec Generator
+# 4. Visual Spec Generator (AI-powered)
 visual_spec_generator = None
 try:
     from utils.visual_specs import VisualSpecGenerator
-    visual_spec_generator = VisualSpecGenerator()
-    logger.info("✓ Visual Spec Generator initialized")
+    visual_spec_generator = VisualSpecGenerator(rag_system=rag_system)
+    logger.info("✓ Visual Spec Generator initialized (AI-powered)")
 except Exception as e:
     logger.warning(f"⚠ Visual Spec init failed: {e}")
 
@@ -94,6 +94,15 @@ try:
     logger.info("✓ Action Engine initialized")
 except Exception as e:
     logger.warning(f"⚠ Action Engine init failed: {e}")
+
+# 7. Analytics Service (Living Dashboard)
+analytics_service = None
+try:
+    from services.analytics import AnalyticsService
+    analytics_service = AnalyticsService()
+    logger.info("✓ Analytics Service initialized")
+except Exception as e:
+    logger.warning(f"⚠ Analytics Service init failed: {e}")
 
 # 7. Load sample data if vector store is empty
 if vector_store:
@@ -146,11 +155,20 @@ except Exception as e:
 # Action Engine routes (the core AI-driven endpoints)
 try:
     from routes.actions import router as action_router, init_action_engine
-    init_action_engine(action_engine)
+    init_action_engine(action_engine, visual_gen=visual_spec_generator)
     app.include_router(action_router, tags=["Actions", "Insights", "Quiz", "Notebook"])
     logger.info("✓ Action Engine routes mounted")
 except Exception as e:
     logger.warning(f"⚠ Action Engine routes failed: {e}")
+
+# Analytics routes (Living Dashboard)
+try:
+    from routes.analytics import router as analytics_router, init_analytics
+    init_analytics(analytics_service, rag_system)
+    app.include_router(analytics_router, tags=["Analytics"])
+    logger.info("✓ Analytics routes mounted")
+except Exception as e:
+    logger.warning(f"⚠ Analytics routes failed: {e}")
 
 
 # ─── Legacy query endpoint (kept for backward compatibility) ─────────────────
@@ -241,6 +259,7 @@ async def health_check():
             "action_engine": "active" if action_engine else "inactive",
             "study_planner": "active" if study_plan_generator else "inactive",
             "misconception_detector": "active" if misconception_detector else "inactive",
+            "analytics": "active" if analytics_service else "inactive",
         },
     }
 

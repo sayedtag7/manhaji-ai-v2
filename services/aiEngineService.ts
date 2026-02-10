@@ -525,3 +525,177 @@ export async function checkBackendHealth(): Promise<Record<string, string> | nul
     return null;
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Confusion Detection
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Detect confusion from recent chat messages and get intervention action. */
+export async function detectConfusion(
+  studentId: string,
+  chatMessages: Array<{ role: string; content: string }>,
+): Promise<{ confused: boolean; action: StudentAction | null }> {
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/actions/detect-confusion`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        student_id: studentId,
+        chat_messages: chatMessages,
+      }),
+    });
+    if (!res.ok) return { confused: false, action: null };
+    return await res.json();
+  } catch (e) {
+    console.error('Confusion detection error:', e);
+    return { confused: false, action: null };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Analytics — Living Dashboard
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface SessionStats {
+  session_minutes: number;
+  lessons_today: number;
+  quizzes_today: number;
+  chats_today: number;
+  games_today: number;
+  notebook_edits: number;
+  avg_quiz_score: number;
+  weekly_activity: Array<{ date: string; events: number; lessons: number; minutes: number }>;
+  misconception_resolution_rate: number;
+  engagement_score: number;
+  total_events_today: number;
+}
+
+/** Get real-time session analytics for the dashboard. */
+export async function getSessionStats(studentId: string): Promise<SessionStats | null> {
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/analytics/stats/${studentId}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+/** Stream the AI-generated Daily Pitch for the dashboard. */
+export function streamDailyPitch(
+  studentId: string,
+  studentName: string,
+  onChunk: (text: string) => void,
+  onDone: () => void,
+): AbortController {
+  const controller = new AbortController();
+
+  fetch(`${BACKEND_URL}/api/analytics/daily-pitch-stream`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ student_id: studentId, student_name: studentName }),
+    signal: controller.signal,
+  })
+    .then(async (res) => {
+      if (!res.ok || !res.body) { onDone(); return; }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              if (data.text) onChunk(data.text);
+              if (data.done) { onDone(); return; }
+            } catch { /* skip */ }
+          }
+        }
+      }
+      onDone();
+    })
+    .catch(() => onDone());
+
+  return controller;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Visual Intelligence — AI-powered diagrams
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface VisualSpec {
+  type: string;
+  topic: string;
+  is_exam_priority?: boolean;
+  nodes?: Array<{
+    id: string;
+    type: string;
+    label_ar: string;
+    label_en: string;
+    color: string;
+    position: { x: number; y: number };
+    badge?: string | null;
+    details_ar?: string;
+    details_en?: string;
+  }>;
+  edges?: Array<{
+    source: string;
+    target: string;
+    label?: string;
+  }>;
+}
+
+/** Generate an AI-powered visual/mindmap with exam priority highlighting. */
+export async function generateVisual(
+  topic: string,
+  subject: string = 'science',
+  grade: number = 7,
+  chatContext: string = '',
+): Promise<VisualSpec | null> {
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/tools/generate-visual`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic, subject, grade, chat_context: chatContext }),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (e) {
+    console.error('Visual generation error:', e);
+    return null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Student Context — Socratic Orchestrator
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Update student context for the Socratic Orchestrator. */
+export async function updateStudentContext(
+  studentId: string,
+  updates: {
+    notebook_text?: string;
+    misconception?: string;
+    resolve_misconception?: string;
+    quiz_topic?: string;
+    quiz_score?: number;
+  },
+): Promise<void> {
+  try {
+    await fetch(`${BACKEND_URL}/api/chat/update-context`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ student_id: studentId, ...updates }),
+    });
+  } catch {
+    // Non-critical
+  }
+}

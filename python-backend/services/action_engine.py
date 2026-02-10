@@ -287,6 +287,93 @@ class ActionEngine:
             xp_reward=50,
         )
 
+    # ─── Confusion Detection from chat logs ───────────────────────────
+    def detect_confusion(self, chat_messages: list) -> Optional[StudentAction]:
+        """
+        Analyze recent chat messages for confusion patterns.
+        If confusion detected, route to appropriate intervention:
+        - Micro-Learning Video for visual learners
+        - Gamified Challenge for engagement
+        - Flash Cards for memory gaps
+        """
+        if not chat_messages:
+            return None
+
+        # Confusion indicators
+        confusion_patterns = [
+            "مش فاهم", "مش عارف", "مش واضح", "مش مفهوم", "صعب",
+            "ممكن تشرح تاني", "محتاج مساعدة", "إيه ده", "ليه كده",
+            "confused", "don't understand", "help", "explain again",
+            "مش عارف أحل", "مش قادر", "مش فاهم حاجة",
+        ]
+
+        # Count confusion signals in last 5 messages
+        recent = chat_messages[-5:]
+        confusion_count = 0
+        confused_topic = ""
+
+        for msg in recent:
+            text = msg.get("content", "") if isinstance(msg, dict) else str(msg)
+            if any(p in text.lower() for p in confusion_patterns):
+                confusion_count += 1
+                confused_topic = text[:100]
+
+        if confusion_count == 0:
+            return None
+
+        # Route based on confusion severity
+        if confusion_count >= 3:
+            # Severe confusion → Micro-Learning Video
+            return StudentAction(
+                action_type=ActionType.MICRO_VIDEO,
+                title_ar="🎬 فيديو قصير يوضحلك",
+                title_en="🎬 Quick Explainer Video",
+                description_ar="شكلك محتاج شرح بصري — الفيديو ده هيوضحلك الموضوع في 3 دقايق!",
+                description_en="Looks like you need a visual explanation — this 3-min video will clarify!",
+                reason_ar="رصدنا إنك مش مرتاح مع الموضوع ده — الفيديو هيساعدك",
+                reason_en="We noticed you're struggling — a video will help",
+                priority=ActionPriority.HIGH,
+                estimated_minutes=5,
+                xp_reward=30,
+                button_label_ar="شوف الفيديو 🎬",
+                button_label_en="Watch Video 🎬",
+                metadata={"trigger": "confusion_severe", "confused_topic": confused_topic},
+            )
+        elif confusion_count >= 2:
+            # Moderate confusion → Gamified Challenge
+            return StudentAction(
+                action_type=ActionType.GAME,
+                title_ar="🎮 تحدي تعليمي ممتع",
+                title_en="🎮 Fun Learning Challenge",
+                description_ar="خلينا نجرب طريقة تانية — العب تحدي سريع يثبت المعلومة!",
+                description_en="Let's try a different approach — play a quick challenge to cement the concept!",
+                reason_ar="بدل ما تحفظ، العب وافهم",
+                reason_en="Learn through play instead of memorization",
+                priority=ActionPriority.MEDIUM,
+                estimated_minutes=8,
+                xp_reward=60,
+                button_label_ar="يلا نلعب! 🎮",
+                button_label_en="Let's play! 🎮",
+                metadata={"trigger": "confusion_moderate", "confused_topic": confused_topic},
+            )
+        else:
+            # Mild confusion → Flash Cards
+            return StudentAction(
+                action_type=ActionType.FLASHCARD,
+                title_ar="🃏 بطاقات مراجعة سريعة",
+                title_en="🃏 Quick Review Cards",
+                description_ar="راجع المفاهيم الأساسية بالبطاقات — المراجعة المتكررة هي السر!",
+                description_en="Review fundamentals with flashcards — spaced repetition is the key!",
+                reason_ar="المراجعة السريعة هتساعدك تفتكر",
+                reason_en="Quick review will help recall",
+                priority=ActionPriority.LOW,
+                estimated_minutes=5,
+                xp_reward=20,
+                button_label_ar="راجع البطاقات 🃏",
+                button_label_en="Review Cards 🃏",
+                metadata={"trigger": "confusion_mild", "confused_topic": confused_topic},
+            )
+
     # ─── Helpers
     @staticmethod
     def _get_next_lesson_id(behavior: StudentBehavior) -> Optional[str]:

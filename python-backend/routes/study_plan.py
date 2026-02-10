@@ -56,3 +56,31 @@ async def sample_plan():
     if not _study_planner:
         raise HTTPException(status_code=503, detail="Study planner not initialized")
     return _study_planner.get_sample_plan().model_dump()
+
+
+@router.get("/api/study-plan/example")
+async def realistic_example():
+    """
+    Get a realistic example plan:
+    - Student excellent in Science
+    - Low engagement in Arabic
+    - Has misconceptions to fix
+    
+    This demonstrates the "Egyptian Coach" strategy in action.
+    """
+    if not _study_planner:
+        raise HTTPException(status_code=503, detail="Study planner not initialized")
+    return _study_planner.get_realistic_example_plan().model_dump()
+
+
+@router.get("/api/study-plan/health")
+async def health_check():
+    """Check if study planner service is available."""
+    if not _study_planner:
+        return {"status": "unavailable", "message": "Study planner not initialized"}
+    return {
+        "status": "healthy",
+        "message": "Study plan generator is ready",
+        "model": "gemini-1.5-flash",
+        "persona": "Egyptian Coach",
+    }

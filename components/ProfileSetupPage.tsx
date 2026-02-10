@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { User, Calendar, MapPin, BookOpen, CheckCircle, ArrowRight, Check } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { getCurrentUser } from '../services/authService';
+import { createUserProfile } from '../services/userProfileService';
 
 interface ProfileSetupPageProps {
   onComplete: () => void;
@@ -11,6 +13,15 @@ const ProfileSetupPage: React.FC<ProfileSetupPageProps> = ({ onComplete }) => {
     const { language, direction } = useLanguage();
     const [step, setStep] = useState(1);
     const totalSteps = 3;
+    const [isLoading, setIsLoading] = useState(false);
+
+    // Form State
+    const [fullName, setFullName] = useState('');
+    const [birthDate, setBirthDate] = useState('');
+    const [gender, setGender] = useState<'male' | 'female'>('male');
+    const [stage, setStage] = useState('');
+    const [year, setYear] = useState('');
+    const [school, setSchool] = useState('');
 
     const copy = language === 'ar'
         ? {
@@ -67,9 +78,37 @@ const ProfileSetupPage: React.FC<ProfileSetupPageProps> = ({ onComplete }) => {
     const progressLabel = language === 'ar' ? `خطوة ${step} من ${totalSteps}` : `Step ${step} of ${totalSteps}`;
     const badgeAlignment = direction === 'rtl' ? 'text-right' : 'text-left';
 
-  const handleNext = () => {
-    if (step < totalSteps) setStep(step + 1);
-    else onComplete();
+  const handleNext = async () => {
+    if (step < totalSteps) {
+        setStep(step + 1);
+    } else {
+        setIsLoading(true);
+        try {
+            const user = getCurrentUser();
+            if (user) {
+                await createUserProfile({
+                    uid: user.uid,
+                    name: fullName,
+                    email: user.email || undefined,
+                    role: 'student',
+                    grade: year,
+                    stage: stage,
+                    school: school,
+                    gender: gender,
+                    birthDate: birthDate,
+                    preferred_language: language
+                });
+            } else {
+                // Fallback for dev/no-auth
+                console.warn("No authenticated user found during profile setup");
+            }
+            onComplete();
+        } catch (error) {
+            console.error("Failed to create profile", error);
+        } finally {
+            setIsLoading(false);
+        }
+    }
   };
 
     return (
@@ -116,12 +155,23 @@ const ProfileSetupPage: React.FC<ProfileSetupPageProps> = ({ onComplete }) => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-gray-700">{copy.fullNameLabel}</label>
-                            <input type="text" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-brand-500 focus:outline-none" placeholder={copy.fullNamePlaceholder} />
+                            <input 
+                                type="text" 
+                                value={fullName}
+                                onChange={(e) => setFullName(e.target.value)}
+                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-brand-500 focus:outline-none" 
+                                placeholder={copy.fullNamePlaceholder} 
+                            />
                         </div>
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-gray-700">{copy.birthdayLabel}</label>
                             <div className="relative">
-                                <input type="date" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-brand-500 focus:outline-none" />
+                                <input 
+                                    type="date" 
+                                    value={birthDate}
+                                    onChange={(e) => setBirthDate(e.target.value)}
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-brand-500 focus:outline-none" 
+                                />
                                 <Calendar className="w-5 h-5 text-gray-400 absolute top-1/2 left-3 -translate-y-1/2" />
                             </div>
                         </div>
@@ -130,12 +180,24 @@ const ProfileSetupPage: React.FC<ProfileSetupPageProps> = ({ onComplete }) => {
                     <div className="space-y-2">
                         <label className="text-sm font-bold text-gray-700">{copy.genderLabel}</label>
                         <div className="flex gap-4">
-                            <label className="flex-1 border-2 border-gray-100 rounded-xl p-3 flex items-center gap-3 cursor-pointer hover:border-brand-200 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 transition-all">
-                                <input type="radio" name="gender" className="w-4 h-4 text-brand-600" />
+                            <label className={`flex-1 border-2 rounded-xl p-3 flex items-center gap-3 cursor-pointer transition-all ${gender === 'male' ? 'border-brand-500 bg-brand-50' : 'border-gray-100 hover:border-brand-200'}`}>
+                                <input 
+                                    type="radio" 
+                                    name="gender" 
+                                    className="w-4 h-4 text-brand-600"
+                                    checked={gender === 'male'}
+                                    onChange={() => setGender('male')}
+                                />
                                 <span className="font-bold text-gray-700">{copy.male}</span>
                             </label>
-                            <label className="flex-1 border-2 border-gray-100 rounded-xl p-3 flex items-center gap-3 cursor-pointer hover:border-brand-200 has-[:checked]:border-brand-500 has-[:checked]:bg-brand-50 transition-all">
-                                <input type="radio" name="gender" className="w-4 h-4 text-brand-600" />
+                            <label className={`flex-1 border-2 rounded-xl p-3 flex items-center gap-3 cursor-pointer transition-all ${gender === 'female' ? 'border-brand-500 bg-brand-50' : 'border-gray-100 hover:border-brand-200'}`}>
+                                <input 
+                                    type="radio" 
+                                    name="gender" 
+                                    className="w-4 h-4 text-brand-600"
+                                    checked={gender === 'female'}
+                                    onChange={() => setGender('female')}
+                                />
                                 <span className="font-bold text-gray-700">{copy.female}</span>
                             </label>
                         </div>
@@ -148,20 +210,28 @@ const ProfileSetupPage: React.FC<ProfileSetupPageProps> = ({ onComplete }) => {
                 <div className="space-y-6 animate-fade-in">
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-gray-700">{copy.stageLabel}</label>
-                            <select className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-brand-500 focus:outline-none appearance-none">
-                                <option>{copy.stagePlaceholder}</option>
+                            <select 
+                                value={stage}
+                                onChange={(e) => setStage(e.target.value)}
+                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-brand-500 focus:outline-none appearance-none"
+                            >
+                                <option value="">{copy.stagePlaceholder}</option>
                                 {copy.stageOptions.map((option) => (
-                                  <option key={option}>{option}</option>
+                                  <option key={option} value={option}>{option}</option>
                                 ))}
                             </select>
                         </div>
 
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-gray-700">{copy.yearLabel}</label>
-                            <select className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-brand-500 focus:outline-none appearance-none">
-                                <option>{copy.yearPlaceholder}</option>
+                            <select 
+                                value={year}
+                                onChange={(e) => setYear(e.target.value)}
+                                className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-brand-500 focus:outline-none appearance-none"
+                            >
+                                <option value="">{copy.yearPlaceholder}</option>
                                 {copy.yearOptions.map((option) => (
-                                  <option key={option}>{option}</option>
+                                  <option key={option} value={option}>{option}</option>
                                 ))}
                             </select>
                         </div>
@@ -169,7 +239,13 @@ const ProfileSetupPage: React.FC<ProfileSetupPageProps> = ({ onComplete }) => {
                         <div className="space-y-2">
                             <label className="text-sm font-bold text-gray-700">{copy.schoolLabel}</label>
                             <div className="relative">
-                                <input type="text" className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-brand-500 focus:outline-none" placeholder={copy.schoolPlaceholder} />
+                                <input 
+                                    type="text" 
+                                    value={school}
+                                    onChange={(e) => setSchool(e.target.value)}
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:border-brand-500 focus:outline-none" 
+                                    placeholder={copy.schoolPlaceholder} 
+                                />
                                 <MapPin className="w-5 h-5 text-gray-400 absolute top-1/2 left-3 -translate-y-1/2" />
                             </div>
                         </div>
@@ -204,9 +280,10 @@ const ProfileSetupPage: React.FC<ProfileSetupPageProps> = ({ onComplete }) => {
         <div className="p-8 border-t border-gray-100 bg-white">
             <button 
                 onClick={handleNext}
-                className="w-full py-4 bg-brand-500 text-white rounded-2xl font-bold text-lg hover:bg-brand-600 transition-all shadow-lg shadow-brand-200 flex items-center justify-center gap-2"
+                disabled={isLoading}
+                className="w-full py-4 bg-brand-500 text-white rounded-2xl font-bold text-lg hover:bg-brand-600 transition-all shadow-lg shadow-brand-200 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
             >
-                {step === totalSteps ? copy.finishButton : copy.nextButton} 
+                {step === totalSteps ? (isLoading ? '...' : copy.finishButton) : copy.nextButton} 
                 {step !== totalSteps && <ArrowRight className="w-5 h-5 rotate-180" />}
             </button>
         </div>

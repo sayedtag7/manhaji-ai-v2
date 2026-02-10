@@ -1,8 +1,10 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Send, Bot, Loader2, Sparkles, User as UserIcon, Image as ImageIcon, Mic, X } from 'lucide-react';
+import { Send, Bot, Loader2, Sparkles, User as UserIcon, Image as ImageIcon, Mic, X, BookOpen } from 'lucide-react';
 import { ChatMessage, Lesson } from '../types';
 import { sendMessageToGemini, startChatSession } from '../services/geminiService';
+import { streamRAGMessage, detectConfusion, updateStudentContext, StudentAction } from '../services/aiEngineService';
+import { logAnalyticsEvent } from '../services/progressService';
 import { useLanguage } from '../contexts/LanguageContext';
 import { SYSTEM_PROMPT_AR, SYSTEM_PROMPT_EN } from '../constants';
 
@@ -17,6 +19,7 @@ const AIChat: React.FC<AIChatProps> = ({ activeLesson }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [confusionAction, setConfusionAction] = useState<StudentAction | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -85,26 +88,60 @@ const AIChat: React.FC<AIChatProps> = ({ activeLesson }) => {
     setIsLoading(true);
 
     try {
-      const responseText = await sendMessageToGemini(
-        userMsg.text || (language === 'ar' ? 'اشرح هذه الصورة' : 'Explain this image'),
-        imageToSend || undefined,
-        language
-      );
-      
-      const botMsg: ChatMessage = {
-        id: (Date.now() + 1).toString(),
-        role: 'model',
-        text: responseText,
-        timestamp: new Date()
-      };
-      
-      setMessages(prev => [...prev, botMsg]);
+      // Log chat event to analytics
+      logAnalyticsEvent('current_user', 'chat', { hasImage: !!imageToSend });
+
+      // For image messages, use direct Gemini (RAG doesn't handle images)
+      if (imageToSend) {
+        const responseText = await sendMessageToGemini(
+          userMsg.text || (language === 'ar' ? 'اشرح هذه الصورة' : 'Explain this image'),
+          imageToSend,
+          language
+        );
+        setMessages(prev => [...prev, {
+          id: (Date.now() + 1).toString(),
+          role: 'model',
+          text: responseText,
+          timestamp: new Date(),
+        }]);
+      } else {
+        // Use streaming RAG for text messages (Socratic + citations)
+        const botMsgId = (Date.now() + 1).toString();
+        setMessages(prev => [...prev, {
+          id: botMsgId,
+          role: 'model',
+          text: '',
+          timestamp: new Date(),
+        }]);
+
+        const controller = streamRAGMessage(
+          userMsg.text,
+          (chunk) => {
+            setMessages(prev => prev.map(m =>
+              m.id === botMsgId ? { ...m, text: m.text + chunk } : m
+            ));
+          },
+          (sources) => {
+            // Check for confusion every 5 messages
+            const recentMsgs = [...messages, userMsg].slice(-5).map(m => ({
+              role: m.role === 'user' ? 'user' : 'assistant',
+              content: m.text,
+            }));
+            detectConfusion('current_user', recentMsgs).then(result => {
+              if (result.confused && result.action) {
+                setConfusionAction(result.action);
+              }
+            }).catch(() => {});
+          },
+          { subject: activeLesson?.subject },
+        );
+      }
     } catch (error) {
        console.error(error);
     } finally {
       setIsLoading(false);
     }
-  }, [input, attachedImage, isLoading, language]);
+  }, [input, attachedImage, isLoading, language, messages]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -181,6 +218,38 @@ const AIChat: React.FC<AIChatProps> = ({ activeLesson }) => {
         )}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Confusion Detection Banner */}
+      {confusionAction && (
+        <div className="mx-4 mb-2 bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-amber-500" />
+            <div>
+              <p className="text-sm font-bold text-amber-800">
+                {language === 'ar' ? confusionAction.title_ar : confusionAction.title_en}
+              </p>
+              <p className="text-xs text-amber-600">
+                {language === 'ar' ? confusionAction.reason_ar : confusionAction.reason_en}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setConfusionAction(null)}
+              className="text-xs text-amber-500 hover:text-amber-700"
+            >✕</button>
+            <button
+              onClick={() => {
+                // TODO: Navigate to the suggested action
+                setConfusionAction(null);
+              }}
+              className="text-xs bg-amber-500 text-white px-3 py-1.5 rounded-lg font-bold hover:bg-amber-600"
+            >
+              {language === 'ar' ? confusionAction.button_label_ar : confusionAction.button_label_en}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Input */}
       <div className="p-4 bg-white border-t border-gray-100">

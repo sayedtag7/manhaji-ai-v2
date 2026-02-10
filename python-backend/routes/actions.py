@@ -14,11 +14,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 _action_engine: Optional[ActionEngine] = None
+_visual_spec_generator = None
 
 
-def init_action_engine(engine: ActionEngine):
-    global _action_engine
+def init_action_engine(engine: ActionEngine, visual_gen=None):
+    global _action_engine, _visual_spec_generator
     _action_engine = engine
+    _visual_spec_generator = visual_gen
 
 
 class BehaviorRequest(BaseModel):
@@ -250,6 +252,40 @@ async def evaluate_reasoning(request: dict):
 
 # ────────────────────────────────── Notebook Intelligence
 
+class VisualGenerateRequest(BaseModel):
+    topic: str
+    context: str = ""
+    chat_context: str = ""
+    lesson_id: Optional[str] = None
+    grade: int = 7
+    subject: str = "science"
+
+
+@router.post("/api/tools/generate-visual")
+async def generate_visual(request: VisualGenerateRequest):
+    """AI-powered visual/mindmap generation.
+    Uses Gemini + RAG chunks to generate React Flow compatible JSON.
+    Highlights exam priority topics with Gold (#F9A825).
+    """
+    if not _visual_spec_generator:
+        raise HTTPException(status_code=503, detail="Visual spec generator not initialized")
+
+    # Get RAG context for grounding
+    rag_context = request.context
+    if _action_engine and _action_engine.vector_store and not rag_context:
+        rag_context, _ = _action_engine.vector_store.retrieve(
+            query=request.topic, grade=request.grade, subject=request.subject, top_k=3
+        )
+
+    spec = _visual_spec_generator.generate(
+        topic=request.topic,
+        context=rag_context,
+        lesson_id=request.lesson_id,
+        chat_context=request.chat_context,
+    )
+    return spec
+
+
 @router.post("/api/notebook/scan")
 async def scan_notebook(request: NotebookScanRequest):
     """Real-time misconception detection from student notebook text.
@@ -304,6 +340,25 @@ async def scan_notebook_stream(request: NotebookScanRequest):
 
 
 # ────────────────────────────────── Parent Dashboard Intelligence
+
+class ConfusionDetectRequest(BaseModel):
+    student_id: str
+    chat_messages: List[Dict[str, Any]] = []
+
+
+@router.post("/api/actions/detect-confusion")
+async def detect_confusion(request: ConfusionDetectRequest):
+    """Detect confusion from recent chat messages and route to appropriate intervention.
+    Returns micro-video, gamified challenge, or flash cards based on confusion severity.
+    """
+    if not _action_engine:
+        raise HTTPException(status_code=503, detail="Action engine not initialized")
+
+    confusion_action = _action_engine.detect_confusion(request.chat_messages)
+    if confusion_action:
+        return {"confused": True, "action": confusion_action.model_dump()}
+    return {"confused": False, "action": None}
+
 
 @router.post("/api/parent/report")
 async def parent_report(request: InsightRequest):

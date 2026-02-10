@@ -44,8 +44,9 @@ const ParentDashboard: React.FC<ParentDashboardProps> = ({ currentUserProfile })
         };
         generateParentAlert(studentData)
             .then(result => {
-                if (result?.alert_ar || result?.alert_en) {
-                    setAiAlert(isAr ? result.alert_ar : result.alert_en);
+                if (result) {
+                    const alertText = result.alert_ar || result.alert_en || result.insight_ar || result.insight_en;
+                    if (alertText) setAiAlert(isAr ? alertText : (result.alert_en || result.insight_en || alertText));
                 }
             })
             .catch(console.error)
@@ -66,8 +67,9 @@ const ParentDashboard: React.FC<ParentDashboardProps> = ({ currentUserProfile })
         };
         try {
             const result = await generateParentReport(studentData);
-            if (result?.report_ar || result?.report_en) {
-                setAiReport(isAr ? result.report_ar : result.report_en);
+            if (result) {
+                const reportText = result.report_ar || result.report_en || result.insight_ar || result.insight_en;
+                if (reportText) setAiReport(isAr ? reportText : (result.report_en || result.insight_en || reportText));
             }
         } catch (err) {
             console.error(err);

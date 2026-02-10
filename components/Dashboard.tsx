@@ -1,18 +1,18 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { COURSES } from '../constants';
-import { Book, CheckCircle, Flame, ArrowLeft, PlayCircle, ArrowRight, Sparkles, Zap, Brain, Target } from 'lucide-react';
+import { Book, CheckCircle, Flame, ArrowLeft, PlayCircle, ArrowRight, Sparkles, Zap, Brain, Target, TrendingUp, BarChart3, Clock } from 'lucide-react';
 import { Course } from '../types';
 import { useLanguage } from '../contexts/LanguageContext';
 import Gamification from './Gamification';
 import StudyPlan from './StudyPlan';
 import Sparkline from './Sparkline';
 import { UserProfile } from '../services/userProfileService';
-import { getStudentStats, StudentStats } from '../services/progressService';
+import { getStudentStats, StudentStats, updateStreak } from '../services/progressService';
 import {
   getNextAction, getMultipleActions, getDynamicButton,
-  generateInsight, streamInsight,
-  StudentAction, DynamicButton, AIInsight
+  generateInsight, streamInsight, streamDailyPitch, getSessionStats,
+  StudentAction, DynamicButton, AIInsight, SessionStats
 } from '../services/aiEngineService';
 
 interface DashboardProps {
@@ -29,6 +29,7 @@ const ACTION_TYPE_ICONS: Record<string, React.ReactNode> = {
   misconception_fix: <Sparkles className="w-5 h-5" />,
   flashcard: <Book className="w-5 h-5" />,
   game: <Zap className="w-5 h-5" />,
+  micro_video: <PlayCircle className="w-5 h-5" />,
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -51,10 +52,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectCourse, currentUserProfil
         const [dynamicBtn, setDynamicBtn] = useState<DynamicButton | null>(null);
         const [actionsLoading, setActionsLoading] = useState(false);
 
-  // Load stats
+        // Living Dashboard state
+        const [sessionStats, setSessionStats] = useState<SessionStats | null>(null);
+
+  // Load stats + update streak
   useEffect(() => {
     if (currentUserProfile?.uid) {
       getStudentStats(currentUserProfile.uid).then(setStats).catch(console.error);
+      updateStreak(currentUserProfile.uid).catch(console.error);
+      getSessionStats(currentUserProfile.uid).then(s => { if (s) setSessionStats(s); }).catch(console.error);
     }
   }, [currentUserProfile?.uid]);
 
@@ -84,10 +90,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectCourse, currentUserProfil
       time_spent_minutes: stats?.totalTimeSpentMinutes || 0,
     };
 
-    // Try streaming insight
-    const abortCtrl = streamInsight(
-      studentData,
-      'dashboard',
+    // Try streaming Daily Pitch (analytics-backed)
+    const abortCtrl = streamDailyPitch(
+      currentUserProfile.uid,
+      currentUserProfile.name || '',
       (chunk) => setAiInsight(prev => prev + chunk),
       () => setIsInsightStreaming(false),
     );
@@ -221,7 +227,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectCourse, currentUserProfil
               </div>
             )}
 
-             {/* Stats Cards */}
+             {/* Stats Cards — Live from Firestore + Analytics */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center justify-between">
                 <div>
@@ -245,6 +251,70 @@ const Dashboard: React.FC<DashboardProps> = ({ onSelectCourse, currentUserProfil
                 </div>
                 </div>
             </div>
+
+            {/* Living Analytics — Real-time session data */}
+            {sessionStats && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock className="w-4 h-4 text-brand-500" />
+                    <span className="text-xs text-gray-500 font-medium">
+                      {isAr ? 'وقت اليوم' : 'Today'}
+                    </span>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-800">{sessionStats.session_minutes}<span className="text-sm font-normal text-gray-400"> {isAr ? 'دقيقة' : 'min'}</span></p>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <BarChart3 className="w-4 h-4 text-green-500" />
+                    <span className="text-xs text-gray-500 font-medium">
+                      {isAr ? 'التفاعل' : 'Engagement'}
+                    </span>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-800">{sessionStats.engagement_score}<span className="text-sm font-normal text-gray-400">%</span></p>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Target className="w-4 h-4 text-orange-500" />
+                    <span className="text-xs text-gray-500 font-medium">
+                      {isAr ? 'نتيجة الكويزات' : 'Quiz Avg'}
+                    </span>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-800">{sessionStats.avg_quiz_score}<span className="text-sm font-normal text-gray-400">%</span></p>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                  <div className="flex items-center gap-2 mb-2">
+                    <TrendingUp className="w-4 h-4 text-purple-500" />
+                    <span className="text-xs text-gray-500 font-medium">
+                      {isAr ? 'حل المشاكل' : 'Fix Rate'}
+                    </span>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-800">{sessionStats.misconception_resolution_rate}<span className="text-sm font-normal text-gray-400">%</span></p>
+                </div>
+
+                {/* Weekly Activity Sparkline */}
+                {sessionStats.weekly_activity && sessionStats.weekly_activity.length > 0 && (
+                  <div className="col-span-2 md:col-span-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Sparkles className="w-4 h-4 text-brand-500" />
+                      <span className="text-xs text-gray-500 font-medium">
+                        {isAr ? 'نشاط الأسبوع' : 'Weekly Activity'}
+                      </span>
+                    </div>
+                    <div className="h-12">
+                      <Sparkline
+                        data={sessionStats.weekly_activity.map(d => d.events)}
+                        color="#00A896"
+                        height={40}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Active Courses */}
             <div>

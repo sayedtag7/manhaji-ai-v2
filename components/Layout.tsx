@@ -14,20 +14,30 @@ import {
   Users,
   School,
   Settings,
-  User
+  User,
+  Gamepad2,
+  TrendingUp,
+  Brain,
+  Layers
 } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { UserProfile } from '../services/userProfileService';
 
 interface LayoutProps {
   children: React.ReactNode;
   activeNav: NavItem;
   onNavigate: (item: NavItem) => void;
   onLogoClick?: () => void;
+  currentUserProfile?: UserProfile | null;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, activeNav, onNavigate, onLogoClick }) => {
+const Layout: React.FC<LayoutProps> = ({ children, activeNav, onNavigate, onLogoClick, currentUserProfile }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { t, language, setLanguage } = useLanguage();
+
+  const userName = currentUserProfile?.name || MOCK_USER.name;
+  const userLevel = MOCK_USER.level; // TODO: derive from profile
+  const userTier = MOCK_USER.subscriptionTier;
 
   const toggleLanguage = () => {
     setLanguage(language === 'ar' ? 'en' : 'ar');
@@ -86,6 +96,10 @@ const Layout: React.FC<LayoutProps> = ({ children, activeNav, onNavigate, onLogo
           <NavButton item={NavItem.Courses} icon={BookOpen} label={t('courses')} />
           <NavButton item={NavItem.Progress} icon={Trophy} label={t('progress')} />
           <NavButton item={NavItem.AI} icon={Bot} label={t('aiTutor')} />
+          <NavButton item={NavItem.MindMap} icon={Brain} label={language === 'ar' ? 'الخرائط الذهنية' : 'Mind Maps'} />
+          <NavButton item={NavItem.FlashCards} icon={Layers} label={language === 'ar' ? 'البطاقات' : 'Flash Cards'} />
+          <NavButton item={NavItem.Games} icon={Gamepad2} label={language === 'ar' ? 'الألعاب' : 'Games'} />
+          <NavButton item={NavItem.Status} icon={TrendingUp} label={language === 'ar' ? 'الحالة' : 'Status'} />
 
           <div className="my-2 border-t border-gray-100 mx-6"></div>
           <span className="px-6 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 mt-2 block">Admin & Family</span>
@@ -121,6 +135,9 @@ const Layout: React.FC<LayoutProps> = ({ children, activeNav, onNavigate, onLogo
               {activeNav === NavItem.Courses && t('courses')}
               {activeNav === NavItem.Progress && t('progress')}
               {activeNav === NavItem.AI && t('aiTutor')}
+              {activeNav === NavItem.MindMap && (language === 'ar' ? 'الخرائط الذهنية' : 'Mind Maps')}
+              {activeNav === NavItem.FlashCards && (language === 'ar' ? 'البطاقات التعليمية' : 'Flash Cards')}
+              {activeNav === NavItem.Games && (language === 'ar' ? 'الألعاب' : 'Games')}
               {activeNav === NavItem.Parents && t('parentsArea')}
               {activeNav === NavItem.Profile && t('profile')}
               {activeNav === NavItem.Settings && t('settings')}
@@ -148,16 +165,16 @@ const Layout: React.FC<LayoutProps> = ({ children, activeNav, onNavigate, onLogo
               onClick={() => onNavigate(NavItem.Profile)}
             >
               <div className="text-left hidden md:block">
-                <p className="text-sm font-bold text-gray-800">{MOCK_USER.name}</p>
+                <p className="text-sm font-bold text-gray-800">{userName}</p>
                 <div className="flex items-center gap-1">
-                  <p className="text-xs text-gray-500">{MOCK_USER.level}</p>
-                  {MOCK_USER.subscriptionTier === 'free' && (
-                    <span className="text-[10px] bg-gray-200 text-gray-600 px-1.5 rounded">Free</span>
+                  <p className="text-xs text-gray-500">{userLevel}</p>
+                  {userTier === 'free' && (
+                    <span className="text-[10px] bg-brand-100 text-brand-600 px-1.5 rounded font-bold">Free</span>
                   )}
                 </div>
               </div>
               <div className="w-[48px] h-[48px] rounded-full bg-gradient-to-br from-brand-500 to-brand-400 flex items-center justify-center text-white font-extrabold text-lg">
-                {MOCK_USER.name.charAt(0)}
+                {userName.charAt(0)}
               </div>
             </div>
           </div>

@@ -40,7 +40,7 @@ const CoursesPage: React.FC<CoursesPageProps> = ({ onSelectCourse }) => {
             filterNew: 'جديد',
             filterActionLabel: 'تصفية',
             recommendedBadge: 'مختار لك بعناية',
-            recommendedDesc: `هذه الدورة تناسب مستواك الحالي وستساعدك على تحسين نقاط ضعفك في ${recommendedCourse.subject}.`,
+            recommendedDesc: `هذه الدورة تناسب مستواك الحالي وستساعدك على تحسين نقاط ضعفك في ${recommendedCourse.subjectAr}.`,
             recommendedStart: 'ابدأ الآن',
             recommendedDetails: 'التفاصيل',
             noResults: 'لا توجد دورات مطابقة للبحث.'
@@ -53,7 +53,7 @@ const CoursesPage: React.FC<CoursesPageProps> = ({ onSelectCourse }) => {
             filterNew: 'New',
             filterActionLabel: 'Filter',
             recommendedBadge: 'Handpicked for you',
-            recommendedDesc: `This course matches your current level and helps you strengthen your ${recommendedCourse.subject} skills.`,
+            recommendedDesc: `This course matches your current level and helps you strengthen your ${recommendedCourse.subjectEn} skills.`,
             recommendedStart: 'Start now',
             recommendedDetails: 'Details',
             noResults: 'No courses match your search yet.'

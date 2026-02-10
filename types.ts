@@ -73,6 +73,10 @@ export enum NavItem {
   Courses = 'courses',
   Progress = 'progress',
   AI = 'ai_tutor',
+  Games = 'games',
+  MindMap = 'mindmap',
+  FlashCards = 'flashcards',
+  Status = 'status',
   Parents = 'parents',
   School = 'school',
   Profile = 'profile',
@@ -182,3 +186,122 @@ export interface Note {
 }
 
 export type QuickActionType = 'quiz' | 'summary' | 'explanation';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Mind Map Types
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface MindMapNode {
+  id: string;
+  label: string;
+  labelEn?: string;
+  description?: string;
+  descriptionEn?: string;
+  type: 'root' | 'concept' | 'detail' | 'example' | 'formula';
+  priority?: 'high' | 'medium' | 'low'; // exam priority
+  mastered?: boolean;
+  x?: number;
+  y?: number;
+}
+
+export interface MindMapEdge {
+  id: string;
+  source: string;
+  target: string;
+  label?: string;
+  labelEn?: string;
+  type?: 'prerequisite' | 'contains' | 'related' | 'leads_to';
+}
+
+export interface MindMapData {
+  nodes: MindMapNode[];
+  edges: MindMapEdge[];
+  title: string;
+  titleEn?: string;
+  lessonId?: string;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Flash Card Types
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface FlashCard {
+  id: string;
+  front: string;         // Question / concept (Arabic)
+  frontEn?: string;
+  back: string;          // Answer / explanation (Arabic)
+  backEn?: string;
+  lessonId?: string;
+  subject?: string;
+  difficulty: 'easy' | 'medium' | 'hard';
+  source: 'auto' | 'mistake' | 'user'; // how it was generated
+  // Spaced repetition fields
+  interval: number;       // days until next review
+  easeFactor: number;     // SM-2 ease factor (default 2.5)
+  repetitions: number;    // number of successful reviews
+  nextReview: string;     // ISO date string
+  lastReview?: string;
+}
+
+export type FlashCardRating = 'again' | 'hard' | 'good' | 'easy';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Ed Game Types
+// ═══════════════════════════════════════════════════════════════════════════
+
+export type GameType = 'matching' | 'sequence' | 'fix_mistake' | 'speed_challenge';
+
+export interface GameQuestion {
+  id: string;
+  questionAr: string;
+  questionEn: string;
+  // For matching games
+  pairs?: Array<{ left: string; leftEn: string; right: string; rightEn: string }>;
+  // For sequence games
+  items?: Array<{ id: string; text: string; textEn: string; correctOrder: number }>;
+  // For fix-the-mistake games
+  wrongStatement?: string;
+  wrongStatementEn?: string;
+  correctStatement?: string;
+  correctStatementEn?: string;
+  explanation?: string;
+  explanationEn?: string;
+  // For speed challenge
+  options?: string[];
+  optionsEn?: string[];
+  correctAnswer?: string;
+  correctAnswerEn?: string;
+}
+
+export interface GameSession {
+  gameType: GameType;
+  score: number;
+  totalQuestions: number;
+  timeElapsed: number;
+  correctAnswers: number;
+  xpEarned: number;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Visual Spec Types
+// ═══════════════════════════════════════════════════════════════════════════
+
+export interface VisualSpec {
+  type: 'concept_card' | 'step_flow' | 'comparison' | 'mistake_correction';
+  title: string;
+  titleEn?: string;
+  nodes: Array<{
+    id: string;
+    label: string;
+    labelEn?: string;
+    text?: string;
+    textEn?: string;
+    style_hint?: 'emphasis' | 'warning' | 'success' | 'info';
+  }>;
+  edges?: Array<{
+    from_id: string;
+    to_id: string;
+    relation_label?: string;
+    relation_labelEn?: string;
+  }>;
+}

@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import { SYSTEM_PROMPT_AR, SYSTEM_PROMPT_EN } from '../constants';
 import { Language } from '../types';
+import { sendRAGMessage } from './aiEngineService';
 
 let client: GoogleGenAI | null = null;
 
@@ -22,15 +23,32 @@ export const initializeGemini = (apiKey: string) => {
 export const getGeminiClient = () => client;
 
 /**
- * Send message to Gemini with optional system prompt and context
+ * Send message to Gemini — first tries RAG backend for grounded responses,
+ * falls back to direct Gemini if backend is unavailable.
  */
 export const sendMessageToGemini = async (
   message: string,
   imageBase64?: string,
   language: Language = 'ar',
-  lessonContext?: string
+  lessonContext?: string,
+  studentId?: string,
+  subject?: string,
+  grade?: number,
 ): Promise<string> => {
   console.log("sendMessageToGemini called:", { message: message.substring(0, 50), hasImage: !!imageBase64, language });
+  
+  // For text-only queries, try RAG backend first (grounded + Egyptian persona + citations)
+  if (!imageBase64) {
+    try {
+      const ragResult = await sendRAGMessage(message, studentId, undefined, grade, subject);
+      if (ragResult && ragResult.text) {
+        console.log("✓ RAG response received (grounded)");
+        return ragResult.text;
+      }
+    } catch (e) {
+      console.log("RAG backend unavailable, falling back to direct Gemini");
+    }
+  }
   
   if (!client) {
     const localized = (ar: string, en: string) => (language === 'ar' ? ar : en);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { BookOpen, Plus, Trash2, Edit3, Save, Bot, Highlighter, FileText, Sparkles, ChevronDown, ChevronUp, AlertTriangle, Loader2 } from 'lucide-react';
+import { BookOpen, Plus, Trash2, Edit3, Save, Bot, Highlighter, FileText, Sparkles, ChevronDown, ChevronUp, AlertTriangle, Loader2, Upload, Download, FileDown, FileUp, File } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import {
   getOrCreateNotebook,
@@ -133,6 +133,134 @@ const AINotebook: React.FC<AINotebookProps> = ({ lessonId, lessonTitle, studentI
     return () => { if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current); };
   }, []);
 
+  // ═══════════════════════════════════════════════════════════════
+  // Import / Export Functions
+  // ═══════════════════════════════════════════════════════════════
+
+  const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showImportExport, setShowImportExport] = useState(false);
+
+  // Export as Markdown
+  const exportAsMarkdown = () => {
+    const title = `# ${lessonTitle}\n\n`;
+    const date = `_Exported: ${new Date().toLocaleDateString(isAr ? 'ar-EG' : 'en-US')}_\n\n---\n\n`;
+    
+    const content = entries.map(entry => {
+      const typeLabel = isAr ? entryTypeLabels[entry.entry_type]?.ar : entryTypeLabels[entry.entry_type]?.en;
+      return `### ${typeLabel}\n\n${entry.content_text}\n\n_${new Date(entry.created_at).toLocaleString(isAr ? 'ar-EG' : 'en-US')}_\n`;
+    }).join('\n---\n\n');
+
+    const blob = new Blob([title + date + content], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${lessonTitle.replace(/[^a-zA-Z0-9\u0600-\u06FF]/g, '_')}_notes.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Export as PDF (using print)
+  const exportAsPDF = () => {
+    const printContent = `
+      <html dir="${isAr ? 'rtl' : 'ltr'}">
+      <head>
+        <meta charset="utf-8">
+        <title>${lessonTitle}</title>
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, sans-serif; padding: 40px; color: #333; }
+          h1 { color: #00A896; border-bottom: 2px solid #00A896; padding-bottom: 10px; }
+          .entry { margin: 20px 0; padding: 15px; border: 1px solid #e0e0e0; border-radius: 8px; }
+          .entry-type { font-size: 12px; color: #666; font-weight: bold; margin-bottom: 8px; }
+          .entry-content { font-size: 14px; line-height: 1.8; white-space: pre-wrap; }
+          .entry-date { font-size: 11px; color: #999; margin-top: 10px; }
+          .ai-entry { background: #f0faf7; border-color: #00A896; }
+          .correction-entry { background: #fffbeb; border-color: #f59e0b; }
+          .brand { text-align: center; color: #999; font-size: 11px; margin-top: 40px; }
+        </style>
+      </head>
+      <body>
+        <h1>📓 ${lessonTitle}</h1>
+        <p style="color: #666; font-size: 12px;">${new Date().toLocaleDateString(isAr ? 'ar-EG' : 'en-US')}</p>
+        ${entries.map(entry => {
+          const typeLabel = isAr ? entryTypeLabels[entry.entry_type]?.ar : entryTypeLabels[entry.entry_type]?.en;
+          const cssClass = entry.entry_type.startsWith('ai_') ? 'ai-entry' : entry.entry_type === 'highlight' ? 'correction-entry' : '';
+          return `<div class="entry ${cssClass}">
+            <div class="entry-type">${typeLabel}</div>
+            <div class="entry-content">${entry.content_text}</div>
+            <div class="entry-date">${new Date(entry.created_at).toLocaleString(isAr ? 'ar-EG' : 'en-US')}</div>
+          </div>`;
+        }).join('')}
+        <div class="brand">Manhaji | منهجي — AI-Powered Learning</div>
+      </body>
+      </html>
+    `;
+
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
+
+  // Import text file
+  const handleFileImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !notebookId) return;
+
+    setIsImporting(true);
+    setImportProgress(isAr ? 'جاري قراءة الملف...' : 'Reading file...');
+
+    try {
+      let text = '';
+
+      if (file.type === 'text/plain' || file.name.endsWith('.txt') || file.name.endsWith('.md')) {
+        text = await file.text();
+      } else if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+        // For PDF: extract text (basic approach - reads as text)
+        setImportProgress(isAr ? 'جاري معالجة PDF...' : 'Processing PDF...');
+        // In production, this would go through backend OCR. For now, read what we can.
+        const buffer = await file.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        // Extract text between stream markers (basic PDF text extraction)
+        const decoder = new TextDecoder('utf-8', { fatal: false });
+        const rawText = decoder.decode(bytes);
+        // Try to extract readable text chunks
+        const textChunks = rawText.match(/\(([^)]+)\)/g);
+        text = textChunks 
+          ? textChunks.map(c => c.slice(1, -1)).join(' ').replace(/\\[nrt]/g, ' ')
+          : `[${isAr ? 'تم استيراد ملف PDF - يحتاج معالجة من الخادم' : 'PDF imported - requires server processing'}]: ${file.name}`;
+      } else if (file.type.startsWith('image/')) {
+        setImportProgress(isAr ? 'جاري معالجة الصورة...' : 'Processing image...');
+        // Convert to base64 for future OCR
+        const reader = new FileReader();
+        const base64 = await new Promise<string>((resolve) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.readAsDataURL(file);
+        });
+        text = `[${isAr ? 'صورة مستوردة' : 'Imported image'}]: ${file.name}\n${base64.substring(0, 100)}...`;
+      }
+
+      if (text.trim()) {
+        setImportProgress(isAr ? 'جاري حفظ المحتوى...' : 'Saving content...');
+        // Split long text into chunks of ~500 chars
+        const chunks = text.match(/[\s\S]{1,500}/g) || [text];
+        for (const chunk of chunks) {
+          const entry = await addNotebookEntry(notebookId, 'note', `📎 ${file.name}\n${chunk.trim()}`);
+          if (entry) setEntries(prev => [...prev, entry]);
+        }
+      }
+    } catch (err) {
+      console.error('Import failed:', err);
+    } finally {
+      setIsImporting(false);
+      setImportProgress('');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-card overflow-hidden">
       {/* Header */}
@@ -165,7 +293,62 @@ const AINotebook: React.FC<AINotebookProps> = ({ lessonId, lessonTitle, studentI
                 {isAr ? 'ملخص ذكي' : 'AI Summary'}
               </button>
             )}
+            
+            {/* Import Button */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isImporting}
+              className="flex items-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 border border-blue-200 rounded-lg text-sm font-semibold hover:bg-blue-100 transition-colors disabled:opacity-50"
+            >
+              {isImporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              {isAr ? 'استيراد' : 'Import'}
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.txt,.md,.png,.jpg,.jpeg"
+              onChange={handleFileImport}
+              className="hidden"
+            />
+
+            {/* Export Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowImportExport(!showImportExport)}
+                className="flex items-center gap-2 px-3 py-2 bg-gray-50 text-gray-600 border border-gray-200 rounded-lg text-sm font-semibold hover:bg-gray-100 transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                {isAr ? 'تصدير' : 'Export'}
+                <ChevronDown className="w-3 h-3" />
+              </button>
+              {showImportExport && (
+                <div className="absolute top-full mt-1 end-0 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50 min-w-[160px]">
+                  <button
+                    onClick={() => { exportAsPDF(); setShowImportExport(false); }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50 text-start"
+                  >
+                    <FileDown className="w-4 h-4 text-red-500" />
+                    {isAr ? 'تصدير PDF' : 'Export PDF'}
+                  </button>
+                  <button
+                    onClick={() => { exportAsMarkdown(); setShowImportExport(false); }}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm hover:bg-gray-50 text-start"
+                  >
+                    <FileText className="w-4 h-4 text-blue-500" />
+                    {isAr ? 'تصدير Markdown' : 'Export Markdown'}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
+
+          {/* Import Progress */}
+          {isImporting && (
+            <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-xl border border-blue-200 text-sm text-blue-600">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              {importProgress}
+            </div>
+          )}
 
           {/* Entries List */}
           {isLoading ? (

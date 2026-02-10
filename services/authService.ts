@@ -50,7 +50,7 @@ export const signInWithGoogle = async (): Promise<UserCredential> => {
       console.error('Firebase Auth Configuration Error. Check:');
       console.error('1. Is Google Sign-In enabled in Firebase Console?');
       console.error('2. Is the API key correct?');
-      console.error('3. Go to: https://console.firebase.google.com/project/manhaji1/authentication/providers');
+      console.error('3. Go to: https://console.firebase.google.com/project/manhaji-a8dcb/authentication/providers');
     }
     
     throw error;
