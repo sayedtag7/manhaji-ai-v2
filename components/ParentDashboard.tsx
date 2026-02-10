@@ -45,23 +45,23 @@ const ParentDashboard: React.FC = () => {
                     </h3>
                     <div className="space-y-6">
                         {COURSES.map((course, i) => (
-                             <div key={course.id}>
+                            <div key={course.id}>
                                 <div className="flex justify-between text-sm mb-1">
                                     <span className="font-medium text-gray-700">{course.title}</span>
                                     <span className="font-bold text-gray-900">{course.progress}%</span>
                                 </div>
                                 <div className="flex items-center gap-4">
                                     <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-                                        <div 
-                                            className={`h-full rounded-full ${i === 0 ? 'bg-brand-500' : i === 1 ? 'bg-accent-blue' : 'bg-accent-orange'}`} 
+                                        <div
+                                            className={`h-full rounded-full ${i === 0 ? 'bg-brand-500' : i === 1 ? 'bg-accent-blue' : 'bg-accent-orange'}`}
                                             style={{ width: `${course.progress}%` }}
                                         ></div>
                                     </div>
                                     {/* Trend Chart */}
                                     <div className="w-16 h-6 opacity-60">
-                                        <Sparkline 
-                                            data={course.weeklyProgress} 
-                                            color={i === 0 ? '#20c997' : i === 1 ? '#3b82f6' : '#f97316'} 
+                                        <Sparkline
+                                            data={course.weeklyProgress}
+                                            color={i === 0 ? '#20c997' : i === 1 ? '#3b82f6' : '#f97316'}
                                             height={20}
                                         />
                                     </div>
@@ -83,7 +83,7 @@ const ParentDashboard: React.FC = () => {
                     </button>
                 </div>
             </div>
-            
+
             <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-xl flex items-start gap-3">
                 <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
                 <div>
