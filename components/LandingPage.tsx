@@ -37,7 +37,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
 
   const landingCopy = {
     ar: {
-      heroBadge: 'مدعوم بتقنيات Huawei Cloud & Pangu AI',
       heroTitleLine1: 'رحلة التعلم الذكي',
       heroTitleLine2: 'تبدأ من هنا',
       heroSubtitle: 'منصة تعليمية شاملة تستخدم الذكاء الاصطناعي لتوفير تجربة مخصصة لكل طالب \n وتغطي المناهج المصرية بالكامل مع معلم ذكي متاح 24/7.',
@@ -88,7 +87,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
       footerCopy: '© 2025 منهجي - جميع الحقوق محفوظة'
     },
     en: {
-      heroBadge: 'Powered by Huawei Cloud & Pangu AI',
       heroTitleLine1: 'The smart learning journey',
       heroTitleLine2: 'starts here',
       heroSubtitle: 'A comprehensive AI-driven platform that personalizes learning for every student \n and covers Egyptian curricula with a smart tutor available 24/7.',
@@ -203,10 +201,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart }) => {
           <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
             {/* Text Content */}
             <div className={`lg:w-1/2 z-10 ${heroAlign}`}>
-              <div className="inline-flex items-center gap-2 bg-brand-50 text-brand-700 px-4 py-1.5 rounded-full text-sm font-bold mb-6 border border-brand-100">
-                <Cloud className="w-4 h-4" />
-                {copy.heroBadge}
-              </div>
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-gray-900 leading-tight mb-6">
                 {copy.heroTitleLine1} <br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-l from-brand-600 to-brand-400">{copy.heroTitleLine2}</span>
