@@ -1,33 +1,11 @@
 
 import React, { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { Bell, Shield, Bot, Moon, Globe, Check, Key, Eye, EyeOff, ExternalLink, RefreshCw } from 'lucide-react';
+import { Bell, Shield, Bot, Moon, Globe, Check } from 'lucide-react';
 
 const SettingsPage: React.FC = () => {
   const { t, language, setLanguage } = useLanguage();
   const [activeTab, setActiveTab] = useState<'preferences' | 'notifications' | 'security'>('preferences');
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [apiKey, setApiKey] = useState(localStorage.getItem('GEMINI_API_KEY') || '');
-  const [apiKeyInput, setApiKeyInput] = useState('');
-  const [editingApiKey, setEditingApiKey] = useState(false);
-
-  const handleUpdateApiKey = () => {
-    if (apiKeyInput.trim()) {
-      localStorage.setItem('GEMINI_API_KEY', apiKeyInput);
-      setApiKey(apiKeyInput);
-      setEditingApiKey(false);
-      // Reload page to reinitialize with new key
-      window.location.reload();
-    }
-  };
-
-  const handleResetApiKey = () => {
-    if (confirm('هل أنت متأكد من حذف مفتاح API؟ سيتطلب إعادة إدخاله لاحقاً.')) {
-      localStorage.removeItem('GEMINI_API_KEY');
-      setApiKey('');
-      window.location.reload();
-    }
-  };
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -139,119 +117,12 @@ const SettingsPage: React.FC = () => {
             )}
 
              {activeTab === 'security' && (
-                <div className="space-y-8 animate-fade-in">
-                    
-                    {/* API Key Section */}
-                    <div>
-                        <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                            <Key className="w-5 h-5 text-brand-600" />
-                            مفتاح Gemini API
-                        </h2>
-                        
-                        <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl p-6 mb-4">
-                            <div className="flex items-start gap-3 mb-4">
-                                <Shield className="w-5 h-5 text-green-600 flex-shrink-0 mt-1" />
-                                <div>
-                                    <h3 className="font-bold text-green-900 mb-1">حالة API Key</h3>
-                                    <p className="text-sm text-green-700">
-                                        {apiKey ? '✓ مفتاح API محفوظ ونشط' : '✗ لم يتم تكوين مفتاح API'}
-                                    </p>
-                                </div>
-                            </div>
-                            
-                            {apiKey && !editingApiKey && (
-                                <div className="space-y-4">
-                                    <div className="bg-white/50 rounded-xl p-4 border border-green-200">
-                                        <label className="text-xs font-bold text-gray-600 mb-2 block">المفتاح الحالي</label>
-                                        <div className="flex items-center gap-2">
-                                            <code className="flex-1 text-sm font-mono text-gray-800 bg-white px-3 py-2 rounded-lg border border-gray-200">
-                                                {showApiKey ? apiKey : '•'.repeat(40)}
-                                            </code>
-                                            <button
-                                                onClick={() => setShowApiKey(!showApiKey)}
-                                                className="p-2 hover:bg-white rounded-lg transition-colors"
-                                            >
-                                                {showApiKey ? <EyeOff className="w-5 h-5 text-gray-600" /> : <Eye className="w-5 h-5 text-gray-600" />}
-                                            </button>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="flex gap-3">
-                                        <button
-                                            onClick={() => setEditingApiKey(true)}
-                                            className="flex-1 py-2 px-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
-                                        >
-                                            <RefreshCw className="w-4 h-4" />
-                                            تحديث المفتاح
-                                        </button>
-                                        <button
-                                            onClick={handleResetApiKey}
-                                            className="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 font-bold rounded-xl transition-colors"
-                                        >
-                                            حذف
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                            
-                            {(!apiKey || editingApiKey) && (
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="text-xs font-bold text-gray-700 mb-2 block">
-                                            {editingApiKey ? 'المفتاح الجديد' : 'أدخل مفتاح API'}
-                                        </label>
-                                        <input
-                                            type="text"
-                                            value={apiKeyInput}
-                                            onChange={(e) => setApiKeyInput(e.target.value)}
-                                            placeholder="AIzaSy..."
-                                            className="w-full px-4 py-3 bg-white border-2 border-gray-300 rounded-xl outline-none focus:border-green-500 focus:ring-4 focus:ring-green-100 transition-all font-mono text-sm"
-                                            dir="ltr"
-                                        />
-                                    </div>
-                                    <div className="flex gap-3">
-                                        <button
-                                            onClick={handleUpdateApiKey}
-                                            disabled={!apiKeyInput.trim()}
-                                            className="flex-1 py-2 px-4 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-colors"
-                                        >
-                                            حفظ المفتاح
-                                        </button>
-                                        {editingApiKey && (
-                                            <button
-                                                onClick={() => setEditingApiKey(false)}
-                                                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition-colors"
-                                            >
-                                                إلغاء
-                                            </button>
-                                        )}
-                                    </div>
-                                    <a 
-                                        href="https://makersuite.google.com/app/apikey" 
-                                        target="_blank" 
-                                        rel="noopener noreferrer"
-                                        className="inline-flex items-center gap-2 text-sm text-green-700 hover:text-green-800 font-bold"
-                                    >
-                                        <ExternalLink className="w-4 h-4" />
-                                        احصل على مفتاح API من Google AI Studio
-                                    </a>
-                                </div>
-                            )}
-                        </div>
-                        
-                        <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
-                            💡 <span className="font-bold">نصيحة:</span> يتم تخزين المفتاح محلياً في متصفحك فقط ولن يتم إرساله لأي خادم.
-                        </div>
+                <div className="space-y-6 animate-fade-in">
+                    <h2 className="text-xl font-bold text-gray-900 mb-4">الأمان</h2>
+                    <div className="p-4 border border-yellow-200 bg-yellow-50 rounded-xl text-yellow-800 text-sm">
+                        يرجى العلم أن تغيير كلمة المرور سيؤدي إلى تسجيل الخروج من جميع الأجهزة الأخرى.
                     </div>
-
-                    {/* Password Section */}
-                    <div className="border-t border-gray-100 pt-8">
-                        <h2 className="text-xl font-bold text-gray-900 mb-4">كلمة المرور</h2>
-                        <div className="p-4 border border-yellow-200 bg-yellow-50 rounded-xl text-yellow-800 text-sm mb-4">
-                            يرجى العلم أن تغيير كلمة المرور سيؤدي إلى تسجيل الخروج من جميع الأجهزة الأخرى.
-                        </div>
-                        <button className="text-brand-600 font-bold hover:underline">تغيير كلمة المرور</button>
-                    </div>
+                    <button className="text-brand-600 font-bold hover:underline">تغيير كلمة المرور</button>
                 </div>
             )}
 
