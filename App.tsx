@@ -41,7 +41,8 @@ const AppContent: React.FC = () => {
   const [activeNav, setActiveNav] = useState<NavItem>(NavItem.Dashboard);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
-  const [loadingAuth, setLoadingAuth] = useState(true);
+  const [loadingAuth, setLoadingAuth] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     // Initialize Gemini with API key from environment (only once)
@@ -53,33 +54,58 @@ const AppContent: React.FC = () => {
       console.warn('⚠️ No Gemini API key found in environment variables');
     }
 
+    // Set timeout to prevent infinite loading
+    const loadingTimeout = setTimeout(() => {
+      if (loadingAuth) {
+        console.warn('Auth loading timeout - forcing completion');
+        setLoadingAuth(false);
+        setIsInitialized(true);
+      }
+    }, 3000);
+
     // Auth Subscription - runs once on mount
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-        if (user) {
-            // User is signed in
-            const profile = await fetchUserProfile(user.uid);
-            if (profile) {
-                setCurrentUserProfile(profile);
-                // Only auto-navigate if we're on initial screens
-                setAuthView(prev => {
-                  if (prev === 'landing' || prev === 'login') {
-                    return 'app';
-                  }
-                  return prev;
-                });
-            } else {
-                // User logged in but no profile - create minimal profile
-                setCurrentUserProfile({ uid: user.uid, email: user.email || '', role: 'student' });
-            }
-        } else {
-            // User is signed out
-            setCurrentUserProfile(null);
-            setAuthView(prev => prev === 'app' ? 'landing' : prev);
+        try {
+          if (user) {
+              // User is signed in
+              setLoadingAuth(true);
+              const profile = await fetchUserProfile(user.uid);
+              
+              if (profile) {
+                  setCurrentUserProfile(profile);
+                  setAuthView(prev => {
+                    if (prev === 'landing' || prev === 'login') {
+                      return 'app';
+                    }
+                    return prev;
+                  });
+              } else {
+                  // User logged in but no profile - create minimal profile
+                  setCurrentUserProfile({ uid: user.uid, email: user.email || '', role: 'student' });
+                  setAuthView(prev => {
+                    if (prev === 'landing' || prev === 'login') {
+                      return 'app';
+                    }
+                    return prev;
+                  });
+              }
+          } else {
+              // User is signed out
+              setCurrentUserProfile(null);
+              setAuthView(prev => prev === 'app' ? 'landing' : prev);
+          }
+        } catch (error) {
+          console.error('Auth state change error:', error);
+        } finally {
+          setLoadingAuth(false);
+          setIsInitialized(true);
         }
-        setLoadingAuth(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      clearTimeout(loadingTimeout);
+      unsubscribe();
+    };
   }, []); // Empty dependency array - run only once on mount
 
   const handleNavChange = (item: NavItem) => {
@@ -108,9 +134,13 @@ const AppContent: React.FC = () => {
   const handleDevAccess = () => {
       setCurrentUserProfile(DEV_PROFILE);
       setAuthView('app');
+      setIsInitialized(true);
   };
   const handleStart = () => setAuthView('login');
-  const handleLogin = () => setAuthView('app');
+  const handleLogin = () => {
+      setLoadingAuth(true);
+      // Auth state will handle the actual navigation
+  };
   const handleGoToSignup = () => setAuthView('signup');
   const handleGoToLogin = () => setAuthView('login');
   const handleSignupSuccess = () => setAuthView('profile-setup');
@@ -123,9 +153,16 @@ const AppContent: React.FC = () => {
       setAuthView('app');
   };
 
-  // While checking auth state on load
-  if (loadingAuth && authView === 'app') {
-      return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  // Show loading only if we haven't initialized and we're trying to go to app
+  if (!isInitialized && loadingAuth) {
+      return (
+        <div className="flex items-center justify-center h-screen bg-gradient-to-br from-[#dcfce7] to-[#d1fae5]">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-[#16a34a] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600 font-bold">جاري التحميل...</p>
+          </div>
+        </div>
+      );
   }
 
   if (authView === 'landing') {
