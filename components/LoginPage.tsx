@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
-import { Mail, Lock, ArrowRight, Loader2, Award, Sparkles, TrendingUp, AlertCircle, Brain, Zap, X } from 'lucide-react';
+import { ArrowRight, Loader2, Award, AlertCircle, Brain, Zap, Sparkles, Rocket } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
-import { signInWithGoogle, signInWithEmail, getAuthErrorMessage } from '../services/authService';
+import { signInWithGoogle, getAuthErrorMessage } from '../services/authService';
 
 interface LoginPageProps {
   onLogin: () => void;
@@ -12,25 +12,21 @@ interface LoginPageProps {
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onGoToSignup }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const { t } = useLanguage();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // Quick UI-only login (no authentication required)
+  const handleQuickLogin = () => {
     setIsLoading(true);
     setError('');
     
-    try {
-      await signInWithEmail(email, password);
-      onLogin();
-    } catch (err: any) {
-      setError(getAuthErrorMessage(err.code));
-    } finally {
+    // Simulate a brief loading state for better UX
+    setTimeout(() => {
       setIsLoading(false);
-    }
+      onLogin();
+    }, 500);
   };
 
+  // Google authentication login
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     setError('');
@@ -71,7 +67,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onGoToSignup }) => {
                 مرحباً بعودتك 👋
               </h1>
               <p className="text-gray-500 text-base font-medium">
-                سجّل الدخول لمتابعة رحلتك التعليمية الذكية
+                اختر طريقة الدخول المناسبة لك
               </p>
             </div>
 
@@ -83,79 +79,83 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onGoToSignup }) => {
               </div>
             )}
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Login Options */}
+            <div className="space-y-4">
               
-              <div className="space-y-2">
-                <label className="block text-sm font-bold text-gray-700">البريد الإلكتروني</label>
-                <div className="relative group">
-                  <Mail className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-[#16a34a] transition-colors" />
-                  <input 
-                    type="email" 
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-4 pr-12 py-4 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-[#16a34a] focus:ring-4 focus:ring-[#16a34a]/10 transition-all font-medium text-gray-900 placeholder:text-gray-400"
-                    placeholder="name@example.com"
-                    disabled={isLoading}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <label className="block text-sm font-bold text-gray-700">كلمة المرور</label>
-                  <a href="#" className="text-sm font-bold text-[#35c0a2] hover:text-[#16a34a] transition-colors">
-                    نسيت كلمة المرور؟
-                  </a>
-                </div>
-                <div className="relative group">
-                  <Lock className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 group-focus-within:text-[#16a34a] transition-colors" />
-                  <input 
-                    type="password" 
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-4 pr-12 py-4 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:border-[#16a34a] focus:ring-4 focus:ring-[#16a34a]/10 transition-all font-medium text-gray-900 placeholder:text-gray-400"
-                    placeholder="••••••••"
-                    disabled={isLoading}
-                  />
-                </div>
-              </div>
-
-              <button 
-                type="submit" 
+              {/* Quick Login - UI Only */}
+              <button
+                onClick={handleQuickLogin}
                 disabled={isLoading}
-                className="w-full py-4 bg-[#16a34a] hover:bg-[#15803d] text-white font-bold text-lg rounded-xl shadow-lg shadow-[#16a34a]/30 hover:shadow-xl hover:shadow-[#16a34a]/40 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                className="w-full group relative overflow-hidden bg-gradient-to-br from-[#16a34a] to-[#35c0a2] hover:from-[#15803d] hover:to-[#16a34a] text-white py-6 px-6 rounded-2xl shadow-lg shadow-[#16a34a]/30 hover:shadow-xl hover:shadow-[#16a34a]/40 active:scale-[0.98] transition-all disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : <span>تسجيل الدخول</span>}
-                {!isLoading && <ArrowRight className="w-5 h-5 rotate-180" />}
+                <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="relative flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
+                      <Rocket className="w-7 h-7 text-white" />
+                    </div>
+                    <div className="text-right">
+                      <h3 className="text-xl font-black mb-1">دخول سريع</h3>
+                      <p className="text-sm text-white/80 font-medium">ابدأ التعلم مباشرة بدون تسجيل</p>
+                    </div>
+                  </div>
+                  {isLoading ? (
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                  ) : (
+                    <ArrowRight className="w-6 h-6 rotate-180 group-hover:translate-x-[-4px] transition-transform" />
+                  )}
+                </div>
               </button>
 
-            </form>
+              {/* Divider */}
+              <div className="relative text-center my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200"></div>
+                </div>
+                <span className="relative bg-white px-4 text-sm text-gray-400 font-medium">أو</span>
+              </div>
 
-            <div className="my-8 relative text-center">
-              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-100"></div></div>
-              <span className="relative bg-white px-4 text-sm text-gray-400 font-medium">أو تابع باستخدام</span>
+              {/* Google Sign-In */}
+              <button
+                onClick={handleGoogleSignIn}
+                disabled={isLoading}
+                className="w-full group relative bg-white border-2 border-gray-200 hover:border-[#35c0a2] hover:bg-gray-50 py-6 px-6 rounded-2xl shadow-sm hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-white border-2 border-gray-100 rounded-xl flex items-center justify-center shadow-sm">
+                      <svg className="w-7 h-7" viewBox="0 0 48 48">
+                        <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+                        <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
+                        <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
+                        <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+                      </svg>
+                    </div>
+                    <div className="text-right">
+                      <h3 className="text-xl font-black text-gray-900 mb-1">تسجيل بحساب Google</h3>
+                      <p className="text-sm text-gray-500 font-medium">سجّل الدخول بحسابك في جوجل</p>
+                    </div>
+                  </div>
+                  {isLoading ? (
+                    <Loader2 className="w-6 h-6 animate-spin text-gray-600" />
+                  ) : (
+                    <ArrowRight className="w-6 h-6 text-gray-400 group-hover:text-[#35c0a2] rotate-180 group-hover:translate-x-[-4px] transition-all" />
+                  )}
+                </div>
+              </button>
+
             </div>
 
-            <button
-               onClick={handleGoogleSignIn}
-               type="button"
-               disabled={isLoading}
-               className="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-100 hover:border-gray-200 hover:bg-gray-50 py-3.5 rounded-xl font-bold text-gray-700 transition-all disabled:opacity-50"
-            >
-              <svg className="w-5 h-5" viewBox="0 0 48 48">
-                  <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
-                  <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"/>
-                  <path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"/>
-                  <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
-              </svg>
-              Google
-            </button>
+            <div className="mt-8 pt-6 border-t border-gray-100">
+              <div className="bg-gradient-to-r from-[#dcfce7] to-[#d1fae5] rounded-xl p-4 text-center">
+                <p className="text-sm text-gray-700 font-medium">
+                  💡 <span className="font-bold">نصيحة:</span> الدخول السريع يتيح لك تجربة المنصة بدون تسجيل
+                </p>
+              </div>
+            </div>
 
-            <p className="border-t border-gray-100 mt-8 pt-6 text-center text-sm font-medium text-gray-500">
-              ليس لديك حساب؟ <button onClick={onGoToSignup} className="text-[#35c0a2] font-bold hover:text-[#16a34a] hover:underline transition-colors">إنشاء حساب جديد</button>
+            <p className="mt-6 text-center text-sm font-medium text-gray-500">
+              تريد إنشاء حساب جديد؟ <button onClick={onGoToSignup} className="text-[#35c0a2] font-bold hover:text-[#16a34a] hover:underline transition-colors">سجل الآن</button>
             </p>
           </div>
         </div>
