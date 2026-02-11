@@ -44,7 +44,7 @@ const AppContent: React.FC = () => {
   const [loadingAuth, setLoadingAuth] = useState(true);
 
   useEffect(() => {
-    // Initialize Gemini with API key from environment
+    // Initialize Gemini with API key from environment (only once)
     const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
     
     if (apiKey) {
@@ -53,43 +53,34 @@ const AppContent: React.FC = () => {
       console.warn('⚠️ No Gemini API key found in environment variables');
     }
 
-    // Auth Subscription
+    // Auth Subscription - runs once on mount
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
         if (user) {
             // User is signed in
             const profile = await fetchUserProfile(user.uid);
             if (profile) {
                 setCurrentUserProfile(profile);
-                // If we are on landing/login/signup, go to app. 
-                // However, if we just signed up, we might be in 'profile-setup' state locally needed.
-                // The issue: onAuthStateChanged triggers on signup too.
-                // We'll let the specific handlers (handleLogin, handleSignupSuccess) control the view transition mostly,
-                // but this ensures we have the data.
-                if (authView === 'landing' || authView === 'login') {
-                    setAuthView('app');
-                }
+                // Only auto-navigate if we're on initial screens
+                setAuthView(prev => {
+                  if (prev === 'landing' || prev === 'login') {
+                    return 'app';
+                  }
+                  return prev;
+                });
             } else {
-                // User logged in but no profile? Might be mid-signup.
-                // If they are not in profile-setup, maybe send them there?
-                // For now, minimal intervention to avoid active signup flow disruption.
-                if (authView === 'app') {
-                   // If they are in app but no profile, maybe they need setup?
-                   // Use dev profile or empty?
-                   setCurrentUserProfile({ uid: user.uid, email: user.email || '', role: 'student' });
-                }
+                // User logged in but no profile - create minimal profile
+                setCurrentUserProfile({ uid: user.uid, email: user.email || '', role: 'student' });
             }
         } else {
             // User is signed out
             setCurrentUserProfile(null);
-            if (authView === 'app') {
-                setAuthView('landing');
-            }
+            setAuthView(prev => prev === 'app' ? 'landing' : prev);
         }
         setLoadingAuth(false);
     });
 
     return () => unsubscribe();
-  }, [authView]);
+  }, []); // Empty dependency array - run only once on mount
 
   const handleNavChange = (item: NavItem) => {
     setActiveNav(item);
