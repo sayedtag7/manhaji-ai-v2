@@ -18,6 +18,7 @@ import LandingPage from './components/LandingPage';
 import LoginPage from './components/LoginPage';
 import SignupPage from './components/SignupPage';
 import ProfileSetupPage from './components/ProfileSetupPage';
+import ApiKeySetup from './components/ApiKeySetup';
 import { NavItem, Course } from './types';
 import { initializeGemini } from './services/geminiService';
 import { LanguageProvider } from './contexts/LanguageContext';
@@ -42,13 +43,20 @@ const AppContent: React.FC = () => {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
+  const [apiKeyConfigured, setApiKeyConfigured] = useState(false);
 
   useEffect(() => {
-    const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
+    // Check localStorage first, then environment variables
+    const storedApiKey = localStorage.getItem('GEMINI_API_KEY');
+    const envApiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || import.meta.env.VITE_GEMINI_API_KEY;
+    const apiKey = storedApiKey || envApiKey;
+    
     if (apiKey) {
       initializeGemini(apiKey);
+      setApiKeyConfigured(true);
     } else {
-      console.warn('No Gemini API key found in env');
+      console.warn('No Gemini API key found. Please configure it.');
+      setApiKeyConfigured(false);
     }
 
     // Auth Subscription
@@ -129,6 +137,17 @@ const AppContent: React.FC = () => {
       }
       setAuthView('app');
   };
+
+  // API Key Setup Handler
+  const handleApiKeySet = (apiKey: string) => {
+    initializeGemini(apiKey);
+    setApiKeyConfigured(true);
+  };
+
+  // Show API Key Setup if not configured
+  if (!apiKeyConfigured) {
+    return <ApiKeySetup onApiKeySet={handleApiKeySet} />;
+  }
 
   // While checking auth state on load
   if (loadingAuth && authView === 'app') {
